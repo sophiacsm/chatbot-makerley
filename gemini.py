@@ -1,9 +1,13 @@
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
+import tomllib
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+with open("config.toml", "rb") as f:
+    config = tomllib.load(f)
+
+genai.configure(api_key=config["gemini"]["api_key"])
 model = genai.GenerativeModel('gemini-2.0-flash')
 
 def ask_gemini(context, question):
