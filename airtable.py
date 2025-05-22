@@ -1,14 +1,12 @@
 import requests, os
 from dotenv import load_dotenv
 import tomllib
+import streamlit as st
 load_dotenv()
 
-with open("config.toml", "rb") as f:
-    config = tomllib.load(f)
-
-API_KEY = config["airtable"]["api_key"]
-BASE_ID = config["airtable"]["base_id"]
-TABLE_NAME = config["airtable"]["table_name"]
+API_KEY = st.secrets["airtable"]["api_key"] if "airtable" in st.secrets else os.getenv("API_KEY")
+BASE_ID = st.secrets["airtable"]["base_id"] if "airtable" in st.secrets else os.getenv("BASE_ID")
+TABLE_NAME = st.secrets["airtable"]["table_name"] if "airtable" in st.secrets else os.getenv("TABLE_NAME")
 
 HEADERS = {
     'Authorization': f'Bearer {API_KEY}',
