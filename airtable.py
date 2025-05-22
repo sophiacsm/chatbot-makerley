@@ -1,10 +1,14 @@
 import requests, os
 from dotenv import load_dotenv
+import tomllib
 load_dotenv()
 
-API_KEY = os.getenv("AIRTABLE_API_KEY")
-BASE_ID = os.getenv("AIRTABLE_BASE_ID")
-TABLE_NAME = os.getenv("AIRTABLE_TABLE_NAME")
+with open("config.toml", "rb") as f:
+    config = tomllib.load(f)
+
+API_KEY = config["airtable"]["api_key"]
+BASE_ID = config["airtable"]["base_id"]
+TABLE_NAME = config["airtable"]["table_name"]
 
 HEADERS = {
     'Authorization': f'Bearer {API_KEY}',
