@@ -1,35 +1,35 @@
-# app.py
-
 import streamlit as st
 from airtable import get_transcriptions
 from memory_faiss import create_index, search_index
 from gemini import ask_gemini
 
-# Configurações iniciais da página
-st.set_page_config(page_title="Chatbot de Reuniões", layout="centered")
-st.title("🤖 Chatbot de Reuniões com Memória Expandida")
+# Inicializar sessão
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# Inicialização (cache para não carregar sempre)
-@st.cache_resource
-def init():
-    transcricoes = get_transcriptions(limit=10)
-    create_index(transcricoes)
-    return transcricoes
+# Título
+st.title("🤖 Chatbot Gemini com Memória")
 
-transcriptions = init()
+# Carregar transcrições e criar índice
+transcriptions = get_transcriptions(limit=10)
+create_index(transcriptions)
 
-# Interface
-with st.form("chat_form"):
-    question = st.text_input("Digite sua pergunta:")
-    submitted = st.form_submit_button("Perguntar")
+# Mostrar histórico do chat
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-if submitted and question.strip():
-    with st.spinner("Consultando a IA..."):
-        trechos_relevantes = search_index(question, transcriptions)
-        contexto = "\n\n".join(trechos_relevantes)
-        resposta = ask_gemini(contexto, question)
-        st.markdown("### 💬 Resposta")
-        st.write(resposta)
+# Entrada do usuário
+if prompt := st.chat_input("Digite sua pergunta sobre as reuniões..."):
+    # Mostrar pergunta do usuário
+    st.chat_message("user").markdown(prompt)
+    st.session_state.messages.append({"role": "user", "content": prompt})
 
-        with st.expander("🧠 Contexto utilizado"):
-            st.code(contexto)
+    # Buscar documentos relevantes e gerar resposta
+    relevant_docs = search_index(prompt, transcriptions)
+    context = "\n\n".join(relevant_docs)
+    response = ask_gemini(context, prompt)
+
+    # Mostrar resposta do bot
+    st.chat_message("assistant").markdown(response)
+    st.session_state.messages.append({"role": "assistant", "content": response})
