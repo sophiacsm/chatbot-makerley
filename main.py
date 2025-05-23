@@ -3,6 +3,7 @@ import json
 import os
 from memory_faiss import create_index, search_index
 from gemini import ask_gemini
+from airtable import get_transcriptions
 from sentence_transformers import SentenceTransformer
 
 MEMORY_FILE = "data/memory_store.json"
@@ -10,7 +11,6 @@ INDEX_PATH = "data/index.faiss"
 MODEL = SentenceTransformer("all-MiniLM-L6-v2")
 
 # Utilitários de memória
-
 def load_memory():
     if os.path.exists(MEMORY_FILE):
         with open(MEMORY_FILE, "r", encoding="utf-8") as f:
@@ -21,8 +21,8 @@ def save_memory(memory):
     with open(MEMORY_FILE, "w", encoding="utf-8") as f:
         json.dump(memory, f, indent=2)
 
-def update_index_from_memory(memory):
-    texts = [item["user"] for item in memory]
+def update_index(transcriptions, memory):
+    texts = transcriptions + [item["user"] for item in memory]
     if texts:
         create_index(texts)
 
@@ -31,11 +31,13 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 # Título
-st.title("🤖 Chatbot Gemini com Memória")
+st.set_page_config(page_title="Chatbot de Reuniões", layout="centered")
+st.title("🤖 Chatbot Gemini com Memória + Reuniões (Airtable)")
 
-# Carregar memória
+# Carregar dados
 memory = load_memory()
-update_index_from_memory(memory)
+transcriptions = get_transcriptions(limit=10)
+update_index(transcriptions, memory)
 
 # Mostrar histórico do chat
 for msg in st.session_state.messages:
@@ -48,12 +50,20 @@ if prompt := st.chat_input("Digite sua pergunta..."):
     st.chat_message("user").markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # Buscar contexto relevante da memória
-    relevant = search_index(prompt, [m["user"] for m in memory])
-    context_pairs = [m for m in memory if m["user"] in relevant]
-    context = "\n".join([f"Usuário: {m['user']}\nBot: {m['bot']}" for m in context_pairs])
+    # Buscar contexto relevante na memória + transcrições
+    memory_texts = [m["user"] for m in memory]
+    all_texts = transcriptions + memory_texts
+    relevant = search_index(prompt, all_texts)
 
-    # Enviar para o Gemini com contexto
+    context_from_transcriptions = [t for t in transcriptions if t in relevant]
+    context_from_memory = [m for m in memory if m["user"] in relevant]
+
+    context = "\n".join(
+        [f"🧠 Transcrição: {t}" for t in context_from_transcriptions] +
+        [f"🗣️ Usuário: {m['user']}\n🤖 Bot: {m['bot']}" for m in context_from_memory]
+    )
+
+    # Obter resposta
     response = ask_gemini(context, prompt)
 
     # Mostrar resposta e salvar na memória
@@ -62,4 +72,4 @@ if prompt := st.chat_input("Digite sua pergunta..."):
 
     memory.append({"user": prompt, "bot": response})
     save_memory(memory)
-    update_index_from_memory(memory)
+    update_index(transcriptions, memory)
