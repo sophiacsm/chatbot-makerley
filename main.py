@@ -5,10 +5,19 @@ from memory_faiss import create_index, search_index
 from gemini import ask_gemini
 from airtable import get_transcriptions
 from sentence_transformers import SentenceTransformer
+from get_next_event import get_next_events
 
 MEMORY_FILE = "data/memory_store.json"
 INDEX_PATH = "data/index.faiss"
 MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+
+def is_calendar_query(prompt: str) -> bool:
+    keywords = [
+        "próxima reunião", "quando é minha próxima reunião",
+        "qual minha próxima reunião", "qual o próximo evento",
+        "me dê as próximas reuniões", "eventos futuros", "reuniões futuras"
+    ]
+    return any(kw.lower() in prompt.lower() for kw in keywords)
 
 # Utilitários de memória
 def load_memory():
@@ -64,7 +73,10 @@ if prompt := st.chat_input("Digite sua pergunta..."):
     )
 
     # Obter resposta
-    response = ask_gemini(context, prompt)
+    if is_calendar_query(prompt):
+        response = get_next_events(n=7)
+    else:
+        response = ask_gemini(context, prompt)
 
     # Mostrar resposta e salvar na memória
     st.chat_message("assistant").markdown(response)
