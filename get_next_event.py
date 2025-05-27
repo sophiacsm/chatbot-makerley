@@ -6,7 +6,7 @@ import pytz
 
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
-def get_next_events(n=3):
+def get_next_events(n=7):
     creds = None
     if os.path.exists('token.json'):
         creds = Credentials.from_authorized_user_file('token.json', SCOPES)
