@@ -119,6 +119,7 @@ if prompt := st.chat_input("Digite sua pergunta..."):
             if r.status_code == 200:
                 st.toast("✅ Tarefa enviada para o Evernote!")
             else:
+                st.toast(r)
                 st.toast("⚠️ Não foi possível enviar ao Evernote.")
         except Exception as e:
             st.toast(f"Erro no envio ao Make: {e}")
