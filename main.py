@@ -103,7 +103,8 @@ if prompt := st.chat_input("Digite sua pergunta..."):
     # Enviar para o Evernote via Webhook (se for tarefa)
     if is_task_query(prompt):
         usuario = "Makerley"
-        data_reuniao = datetime.today().strftime("%Y-%m-%d")
+        data_reuniao = ask_gemini(context, "Qual a data dessa reunião?")
+        response2 = ask_gemini(context, "Qual foi o título dessa reunião?")
 
         # Enviar ao Make.com webhook
         payload = {
