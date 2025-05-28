@@ -6,10 +6,24 @@ from gemini import ask_gemini
 from airtable import get_transcriptions
 from sentence_transformers import SentenceTransformer
 from get_next_event import get_next_events
+import requests
+import streamlit as st
+from datetime import datetime
+
+MAKE_WEBHOOK_URL = st.secrets["evernote"]["webhook_url"]
 
 MEMORY_FILE = "data/memory_store.json"
 INDEX_PATH = "data/index.faiss"
 MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+
+# Função auxiliar para detectar se a pergunta é sobre tarefas
+def is_task_query(prompt: str) -> bool:
+    task_keywords = [
+        "quais minhas demandas", "quais tarefas foram passadas para mim",
+        "minhas tarefas", "minhas demandas", "o que preciso fazer",
+        "quais as ações para mim", "quais atividades são minhas"
+    ]
+    return any(kw.lower() in prompt.lower() for kw in task_keywords)
 
 def is_calendar_query(prompt: str) -> bool:
     keywords = [
@@ -41,7 +55,7 @@ if "messages" not in st.session_state:
 
 # Título
 st.set_page_config(page_title="Chatbot de Reuniões", layout="centered")
-st.title("🤖 Chatbot Gemini com Memória + Reuniões (Airtable)")
+st.title("🤖 Chatbot para Reuniões ")
 
 # Carregar dados
 memory = load_memory()
@@ -55,11 +69,10 @@ for msg in st.session_state.messages:
 
 # Entrada do usuário
 if prompt := st.chat_input("Digite sua pergunta..."):
-    # Mostrar pergunta do usuário
     st.chat_message("user").markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # Buscar contexto relevante na memória + transcrições
+    # Buscar contexto relevante
     memory_texts = [m["user"] for m in memory]
     all_texts = transcriptions + memory_texts
     relevant = search_index(prompt, all_texts)
@@ -78,10 +91,32 @@ if prompt := st.chat_input("Digite sua pergunta..."):
     else:
         response = ask_gemini(context, prompt)
 
-    # Mostrar resposta e salvar na memória
+    # Mostrar resposta
     st.chat_message("assistant").markdown(response)
     st.session_state.messages.append({"role": "assistant", "content": response})
 
+    # Salvar na memória
     memory.append({"user": prompt, "bot": response})
     save_memory(memory)
     update_index(transcriptions, memory)
+
+    # Enviar para o Evernote via Webhook (se for tarefa)
+    if is_task_query(prompt):
+        usuario = "Makerley"
+        data_reuniao = datetime.today().strftime("%Y-%m-%d")
+
+        # Enviar ao Make.com webhook
+        payload = {
+            "usuario": usuario,
+            "resposta": response,
+            "data": data_reuniao
+        }
+
+        try:
+            r = requests.post(MAKE_WEBHOOK_URL, json=payload)
+            if r.status_code == 200:
+                st.toast("✅ Tarefa enviada para o Evernote!")
+            else:
+                st.toast("⚠️ Não foi possível enviar ao Evernote.")
+        except Exception as e:
+            st.toast(f"Erro no envio ao Make: {e}")
