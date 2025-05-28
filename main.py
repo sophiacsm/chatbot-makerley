@@ -14,7 +14,7 @@ MAKE_WEBHOOK_URL = st.secrets["evernote"]["webhook_url"]
 
 MEMORY_FILE = "data/memory_store.json"
 INDEX_PATH = "data/index.faiss"
-MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+MODEL = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
 
 # Função auxiliar para detectar se a pergunta é sobre tarefas
 def is_task_query(prompt: str) -> bool:
