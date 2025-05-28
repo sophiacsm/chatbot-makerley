@@ -110,7 +110,8 @@ if prompt := st.chat_input("Digite sua pergunta..."):
         payload = {
             "usuario": usuario,
             "resposta": response,
-            "data": data_reuniao
+            "data": data_reuniao,
+            "titulo": response2
         }
 
         try:
